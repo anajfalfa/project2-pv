@@ -11,7 +11,6 @@ method consume_time_credit() //
     requires acc(time_credit(), 1/1)
 // -----------------------------------------
 
-
 // -----------------------------------------
 // Mathematical definition of n^e
 function math_pow(n: Int, e: Int): Int
@@ -20,13 +19,40 @@ function math_pow(n: Int, e: Int): Int
     e == 0 ? 1 : n * math_pow(n, e - 1)
 }
 // -----------------------------------------
+function pow_iters(y: Int): Int
+    requires y >= 0
+{
+    y == 0 ? 0 : 1 + pow_iters(y/2)
+}
 
+// Simple lemma: if y>0 then pow_iters(y) >= 1
+method lemma_pow_iters_pos(y: Int)
+    requires y > 0
+    ensures pow_iters(y) >= 1
+
+
+function pow_cost(e: Int): Int
+    requires e > 0
+{
+    1 + pow_iters(e)
+}
+
+// Lemmas to relate math_pow(b, y) with math_pow(b*b, y/2)
+method lemma_pow_even(b: Int, y: Int)
+    requires 0 <= y
+    requires y % 2 == 0
+    ensures math_pow(b, y) == math_pow(b * b, y / 2)
+
+method lemma_pow_odd(b: Int, y: Int)
+    requires 0 <= y
+    requires y % 2 == 1
+    ensures math_pow(b, y) == b * math_pow(b * b, y / 2)
 // -----------------------------------------
 // You can use this lemma without a proof
-method lemma_pow(b: Int, y: Int) 
-    requires 0 <= y
-    requires y % 2 == 0 // y is even
-    ensures math_pow(b, y) == math_pow(b * b, y / 2)
+// method lemma_pow(b: Int, y: Int) 
+//     requires 0 <= y
+//     requires y % 2 == 0 // y is even
+//     ensures math_pow(b, y) == math_pow(b * b, y / 2)
 // -----------------------------------------
 
 
@@ -41,25 +67,40 @@ method lemma_pow(b: Int, y: Int)
 method fast_pow(n: Int, e: Int)
     returns (res: Int)
     requires 0 < e
-    // TODO: verify; add time credits and runtime bounds
+    requires pow_cost(e) >= 2
+    requires acc(time_credit(), pow_cost(e)/1)
     ensures res == math_pow(n, e)
 {
-    consume_time_credit() // we must spend a credit for every call
+    consume_time_credit()
 
     var b: Int := n
     var y: Int := e 
     res := 1
+    var iterations: Int := 0
 
     while (y > 0)
+        invariant y >= 0
+        invariant res * math_pow(b, y) == math_pow(n, e)
+    invariant iterations >= 0
+    invariant pow_iters(y) + iterations == pow_iters(e)
+    invariant pow_iters(y) >= 0
+    invariant acc(time_credit(), pow_iters(y)/1)
     {
-        consume_time_credit() // we must spend a credit for every loop iteration
+    // Prove there is at least one iteration credit for the current y
+    lemma_pow_iters_pos(y)
+    consume_time_credit()
+        iterations := iterations + 1
 
         if (y % 2 == 1) {
+            lemma_pow_odd(b, y)
             res := res * b
+        } else {
+            lemma_pow_even(b, y)
         }
 
         y := y / 2
         b := b * b
     }
 }
+
 // -----------------------------------------

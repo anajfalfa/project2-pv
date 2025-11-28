@@ -76,11 +76,29 @@ define alloc(a, l) {
 //         of dynamic arrays. You may also store other (ghost) information
 //         such as time credits needed for amortized analysis.
 //         Feel free to add acessor functions to simplify fold-unfold reasoning.
-predicate dyn_array(self: Ref)
+
+predicate dyn_array(self: Ref) {
+    // We keep write permission to the object's fields
+    acc(self.length) && acc(self.capacity) && acc(self.array) &&
+
+    // Basic representation invariants
+    0 <= self.length && self.length <= self.capacity &&
+
+    // The underlying static array's length equals the object's capacity
+    len(self.array) == self.capacity &&
+
+    // Permission to access the entries of the static array (for indices 0..capacity-1)
+    staticArray(self.array)
+}
 
 
 // Accessor functions for commonly needed fields
-function arr_length(base: Ref): Int 
+function arr_length(base: Ref): Int
+    requires acc(dyn_array(base))
+{
+    // Read the field under the dyn_array predicate so we have permission.
+    unfolding acc(dyn_array(base)) in base.length
+}
 
 // Feel free to also implement acessor or abstraction functions to simplify fold-unfold reasoning.
 // -----------------------------------------
@@ -94,19 +112,26 @@ function arr_length(base: Ref): Int
 // Remember to require sufficiently many time credits.
 method cons(_capacity: Int) returns (arr: Ref)
     requires 0 < _capacity
-    requires acc(time_credit(), n/1) // have n credits - check aa
+    // constant-time: require one time credit for the method call
+    requires acc(time_credit(), 1/1)
+    ensures dyn_array(arr)
 {
-    consume_time_credit() // every method call must consume a time credit
+    consume_time_credit()
 
-    // aa
-    var da : Ref
-    da := new(length,capacity, array)
+    // Allocate a fresh static array value `a` of length _capacity and obtain
+    // permissions to its element entries via `alloc`.
+    var a: StaticArray
+    alloc(a, _capacity)
+
+    // Allocate the dynamic array object and initialise fields
+    var da: Ref
+    da := new(length,capacity,array)
     da.length := 0
     da.capacity := _capacity
-    // da.array := StaticArray
+    da.array := a
 
-
-
+    fold dyn_array(da)
+    arr := da
 }
 // -----------------------------------------
 
@@ -116,17 +141,20 @@ method cons(_capacity: Int) returns (arr: Ref)
 // TASK 3.3: Define an abstraction function that maps a dynamic array to the 
 //         mathematical sequence of values stored in its elements.
 // For other tasks, you might have to prove additional properties about the abstraction.
-function arr_contents(base: Ref): Seq[Int]
+function arr_contents(base: Ref, i: Int): Seq[Int]
 // -----------------------------------------
+// - Requires permission to the `dyn_array(base)` predicate so that the
+//   implementation can read `base.length` and the underlying static
+//   array entries.
+// - Unfolds `acc(dyn_array(base))` to access the concrete fields and
+//   recursively collects elements using `lookup(base.array, i)`.
+// - Returns an empty sequence when `i >= base.length`.
+    requires acc(dyn_array(base))
 {
-    if(base.length ==0){
-        Seq[Int]()
-    }
-    else{
-        //++Seq[Int]()...
-    }
+    unfolding acc(dyn_array(base)) in (
+        0 <= i && i < base.length ? Seq(lookup(base.array, i)) ++ arr_contents(base, i + 1) : Seq[Int]()
+    )
 }
-
 
 // -----------------------------------------
 // TASK 3.4: Prove that this method appends the value val to the dynamic array
