@@ -236,6 +236,7 @@ method append(arr: Ref, val: Int) returns (new_arr: Ref)
     requires acc(time_credit())
     requires acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
     requires acc(dyn_array(arr))
+    ensures acc(dyn_array(arr)) && acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
 {
     consume_time_credit() // we must spend a time credit for the call
 
