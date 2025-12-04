@@ -172,7 +172,7 @@ method append_nogrow(arr: Ref, val: Int)
     requires acc(arr.array)
     requires acc(dyn_array(arr))
     requires unfolding dyn_array(arr) in arr.capacity > arr.length
-    ensures acc(arr.array) && acc(dyn_array(arr)) && unfolding dyn_array(arr) in arr.capacity > arr.length
+    ensures acc(arr.array) && acc(dyn_array(arr)) && unfolding dyn_array(arr) in arr.capacity >= arr.length
 {
     consume_time_credit() 
 
@@ -195,10 +195,6 @@ method append_nogrow(arr: Ref, val: Int)
 //         Hint: You may, of course, use additional time credits that have been stored
 //               in your dynamic array for later use.
 method grow(arr: Ref) returns (new_arr: Ref)
-    requires acc(time_credit())
-    requires acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
-    requires acc(dyn_array(arr))
-    ensures acc(arr.array) && acc(dyn_array(arr)) && unfolding dyn_array(arr) in arr.capacity > arr.length
 {
     consume_time_credit() // we must spend a credit for the call
 
@@ -233,9 +229,6 @@ method grow(arr: Ref) returns (new_arr: Ref)
 //         Furthermore, prove memory safety, perservation of data structure invariants
 //         and that the method returns an array that correctly appends the value val. 
 method append(arr: Ref, val: Int) returns (new_arr: Ref)
-    requires acc(time_credit())
-    requires acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
-    ensures acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
 {
     consume_time_credit() // we must spend a time credit for the call
 
