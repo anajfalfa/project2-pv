@@ -32,7 +32,7 @@ method consume_time_credit() //
 // -----------------------------------------
 // Mathematical specification
 
-// fib_math(n): standard mathematical Fibonacci function.
+// fib_math(n): standard mathematical Fibonacci function
 // - Returns F(n) where F(0) = 0, F(1) = 1 and
 //   F(n) = F(n-1) + F(n-2) for n >= 2.
 // - Serves as the functional specification that `fib_recursive`
@@ -64,10 +64,16 @@ function fib_cost(n: Int): Int
 // Main implementation with proven tight runtime bound
 method fib_recursive(n: Int) returns (res: Int)
     requires n >= 0  // input must be non-negative
+    // TODO add time credits and functional specification
+    //requires time_credit() x fib_cost(n) times
     requires acc(time_credit(), fib_cost(n)/1) // provide enough time credits
+    // Smallest / tight upper bound on the method's runtime
+    // tests:
+    //requires acc(time_credit(), (fib_cost(n)-1)/1) // not enough -> consume_time_credits
+    //requires acc(time_credit(), (fib_cost(n)+1)/1) // too many -> problem in recursive calls
     ensures res == fib_math(n) // functional correctness
 {
-    consume_time_credit()
+    consume_time_credit() // we must spend a credit for every call
 
     if (n == 0) {
         res := 0
@@ -81,4 +87,24 @@ method fib_recursive(n: Int) returns (res: Int)
         
         res := sub1 + sub2
     }
+
+    //  Proof: smallest upper bound on the method's runtime
+    exhale perm(time_credit()) == none // 1/1 //give back unused time credit
 }
+
+// test main method
+method main()
+
+{
+    //TODO: make tests for fib_recursive
+    var a: Int
+    //a := fib_recursive(5)
+
+    //assert a == 5
+    //assert fib_recursive(0) == 0
+    //assert fib_recursive(1) == 1
+    //assert false
+}
+
+
+// Verified with both carbon and silicon
