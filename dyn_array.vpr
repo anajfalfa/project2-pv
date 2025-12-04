@@ -21,6 +21,8 @@ field length: Int // how many elements are currently stored in the array
 field capacity: Int // how many elements can be stored in the array
 field array: StaticArray // the static array storing the actual elements, see below
 
+//Ghost code field of accumulated credits
+field savings: Int
 
 // Fields of individual array elements
 field entry: Int // the value of the array element
@@ -166,7 +168,11 @@ function arr_contents(base: Ref, i: Int): Seq[Int]
 //         grow the array later if necessary.
 //         You can add specifications and ghost code, but do not modify the production code
 method append_nogrow(arr: Ref, val: Int)
-    ensures arr.capacity > arr.length //addded aa
+    requires acc(time_credit(), 1/1)
+    requires acc(arr.array)
+    requires acc(dyn_array(arr))
+    requires unfolding dyn_array(arr) in arr.capacity > arr.length
+    ensures acc(arr.array) && acc(dyn_array(arr)) && unfolding dyn_array(arr) in arr.capacity > arr.length
 {
     consume_time_credit() 
 
