@@ -119,6 +119,9 @@ method fast_pow(n: Int, e: Int)
         y := y / 2
         b := b * b
     }
+    exhale perm(time_credit()) == none // 1/1 //give back unused time credit
+    //assert false
+
 }
 
 // -----------------------------------------
