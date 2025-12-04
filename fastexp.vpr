@@ -40,13 +40,28 @@ function pow_cost(e: Int): Int
 // Lemmas to relate math_pow(b, y) with math_pow(b*b, y/2)
 method lemma_pow_even(b: Int, y: Int)
     requires 0 <= y
-    requires y % 2 == 0
+    requires y % 2 == 0 // y is even
     ensures math_pow(b, y) == math_pow(b * b, y / 2)
 
 method lemma_pow_odd(b: Int, y: Int)
     requires 0 <= y
     requires y % 2 == 1
     ensures math_pow(b, y) == b * math_pow(b * b, y / 2)
+{
+    // proof by unfolding definitions
+    assert math_pow(b, y) == b * math_pow(b, y - 1)
+    assert y - 1 >= 0
+    assert (y - 1) % 2 == 0 // y-1 is even
+    lemma_pow_even(b, y - 1)
+    assert math_pow(b, y - 1) == math_pow(b * b, (y - 1) / 2)
+    //(y - 1) / 2 == y / 2
+    assert y == 2 * (y / 2) + (y % 2)    // div/mod identity
+    assert y % 2 == 1
+    assert y == 2 * (y / 2) + 1
+    assert y - 1 == 2 * (y / 2)
+    // ---
+    assert math_pow(b, y) == b * math_pow(b * b, y / 2)
+}
 // -----------------------------------------
 // You can use this lemma without a proof
 // method lemma_pow(b: Int, y: Int) 
@@ -67,35 +82,38 @@ method lemma_pow_odd(b: Int, y: Int)
 method fast_pow(n: Int, e: Int)
     returns (res: Int)
     requires 0 < e
-    requires pow_cost(e) >= 2
-    requires acc(time_credit(), pow_cost(e)/1)
+    // TODO: verify; add time credits and runtime bounds
+    requires pow_cost(e) >= 2 //+
+    requires acc(time_credit(), pow_cost(e)/1)  //+
     ensures res == math_pow(n, e)
+    // correct contract
 {
-    consume_time_credit()
+    consume_time_credit() // we must spend a credit for every call
 
     var b: Int := n
     var y: Int := e 
     res := 1
-    var iterations: Int := 0
+    var iterations: Int := 0 //+
 
     while (y > 0)
+        //added invariants
         invariant y >= 0
         invariant res * math_pow(b, y) == math_pow(n, e)
-    invariant iterations >= 0
-    invariant pow_iters(y) + iterations == pow_iters(e)
-    invariant pow_iters(y) >= 0
-    invariant acc(time_credit(), pow_iters(y)/1)
+        invariant iterations >= 0
+        invariant pow_iters(y) + iterations == pow_iters(e)
+        invariant pow_iters(y) >= 0
+        invariant acc(time_credit(), pow_iters(y)/1)
     {
-    // Prove there is at least one iteration credit for the current y
-    lemma_pow_iters_pos(y)
-    consume_time_credit()
-        iterations := iterations + 1
+        // Prove there is at least one iteration credit for the current y
+        lemma_pow_iters_pos(y) // +
+        consume_time_credit() // we must spend a credit for every loop iteration
+        iterations := iterations + 1 // +
 
         if (y % 2 == 1) {
-            lemma_pow_odd(b, y)
+            lemma_pow_odd(b, y) // +
             res := res * b
         } else {
-            lemma_pow_even(b, y)
+            lemma_pow_even(b, y) // +
         }
 
         y := y / 2
@@ -104,3 +122,4 @@ method fast_pow(n: Int, e: Int)
 }
 
 // -----------------------------------------
+// Verified with both carbon and silicon
