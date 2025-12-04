@@ -235,8 +235,7 @@ method grow(arr: Ref) returns (new_arr: Ref)
 method append(arr: Ref, val: Int) returns (new_arr: Ref)
     requires acc(time_credit())
     requires acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
-    requires acc(dyn_array(arr))
-    ensures acc(dyn_array(arr)) && acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
+    ensures acc(arr.array) && acc(arr.capacity) && acc(arr.capacity)
 {
     consume_time_credit() // we must spend a time credit for the call
 
@@ -251,6 +250,6 @@ method append(arr: Ref, val: Int) returns (new_arr: Ref)
         // yes, we can append without growing the array first
         new_arr := arr
         append_nogrow(new_arr, val)
-    }   
+    }
 }
 // -----------------------------------------
