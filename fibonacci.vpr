@@ -94,17 +94,40 @@ method fib_recursive(n: Int) returns (res: Int)
 
 // test main method
 method main()
-
+    requires acc(time_credit(), fib_cost(5)/1) // provide enough time credits
 {
-    //TODO: make tests for fib_recursive
+    //TODO: make tests for fib_recursive 
     var a: Int
-    //a := fib_recursive(5)
+    a := fib_recursive(5)
+    exhale perm(time_credit()) == none // fib_cost(5)/1 // 1/1
 
-    //assert a == 5
-    //assert fib_recursive(0) == 0
-    //assert fib_recursive(1) == 1
     //assert false
 }
 
+method test2()
+{
+    //TODO: make tests for fib_recursive
+    inhale acc(time_credit(), fib_cost(5)/1)
+    
+    var a: Int
+    a := fib_recursive(5)
+    exhale perm(time_credit()) == none // fib_cost(5)/1 // 1/1
+
+    //assert a == 5
+
+    inhale acc(time_credit(), 2/1)
+    
+    var b: Int
+    b := fib_recursive(0)
+    exhale perm(time_credit()) == 1/1
+    
+    assert b == 0
+
+    var c: Int
+    c := fib_recursive(1)
+    exhale perm(time_credit()) == 0/1 // none
+    
+    assert c == 1
+}
 
 // Verified with both carbon and silicon
