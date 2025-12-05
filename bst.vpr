@@ -46,11 +46,6 @@ function min(a : Int, b : Int) : Int
 // -----------------------------------------
 
 // -----------------------------------------
-// Ghost field - TASK 4.1 + 4.4
-field set: Set[Int] // set of all values in the BST rooted at this node
-// -----------------------------------------
-
-// -----------------------------------------
 // TASK 4.1: Define a predicate for binary search trees and individual BST nodes.
 // You may define additional fields, predicates, arguments or heap-based functions.
 
@@ -83,7 +78,6 @@ predicate bst_node(self: Ref) // TODO
     // all nodes values in right subtree > (stricly greater) current node value
     (self.right != null ==> (forall x: Int :: x in to_set_node(self.right) ==> x > self.elem))
 }
-
 // -----------------------------------------
 
 
@@ -93,9 +87,9 @@ method bst_insert(tree: Ref, val: Int)
     requires bst(tree)
     // TODO
     // TASK 4.3 time credit =  at most height(tree) + c (constant, typically 1 or 2)
-    // requires acc(time_credit(), height(tree) +c) // where???
     requires height(tree) + 1 >= 0 // permissions not negative
     requires acc(time_credit(), (height(tree)+1)/1) //++ 
+    // requires acc(time_credit(), height(tree) +c)
     //  (height(tree)) 
     //  (height(tree) + 1) 
     //  (height(tree) + 2) // max nr recursive calls + 1 bst_insert + 1 deepest insert_rec
@@ -103,27 +97,26 @@ method bst_insert(tree: Ref, val: Int)
     // if balanced input tree, then O(log n), n total nr of nodes
     // if unbalanced input tree, then O(n), n total nr of nodes
 
-    // ! memory safety
-    ensures bst(tree) // ++ 4.2 preserves BST property 
+    // TASK 4.2: insertion preserves bst property
+    // TASK 4.2: memory safety - fold/unfold + access permissions
+    ensures bst(tree) // ++  
 
     // TASK 4.4 set of values
-    ensures to_set(tree) == to_set(old(tree)) union Set(val) //++
+    ensures to_set(tree) == old(to_set(tree)) union Set(val) //++
     ensures height(tree) <= old(height(tree)) + 1 //++
 
 {
     consume_time_credit() // spend one time credit for the current call 4.3
     unfold bst(tree)
 
-    if (tree.root == null)
-    {
-        // consume_time_credit()
-        // insert new node as root
+    if (tree.root == null){// insert new node as root
         var new_node: Ref := new(elem, left, right)
         new_node.elem := val
         new_node.left := null
         new_node.right := null
 
         tree.root := new_node
+
 
         fold bst_node(new_node)   
     }
@@ -132,32 +125,29 @@ method bst_insert(tree: Ref, val: Int)
         new_root := insert_rec(tree.root, val)
         tree.root := new_root
     }
-    // folding
-    fold bst(tree)
-
+    fold bst(tree) // folding back the bst predicate
+    exhale perm(time_credit()) == 0/1 // none // 1/1 // give back unused time credit
 }
 
 method insert_rec(tree: Ref, val: Int) returns (res: Ref)
     requires bst_node(tree)
-    // TODO time credits for TASK 4.3
     requires acc(time_credit(), (height_node(tree))/1) //++
+    
     ensures bst_node(tree)
     ensures res == tree
     ensures to_set_node(res) == old(to_set_node(tree)) union (Set(val))
     ensures height_node(res) <= old(height_node(tree)) + 1
 {
-    //consume_time_credit() // spend one time credit for the current call 4.3
+    consume_time_credit() // spend one time credit for the current call 4.3
     unfold bst_node(tree)
-    res := tree
     
     var curr: Int := tree.elem
 
-    if (val == curr) { // -- no duplicates
+    if (val == curr) { // no duplicates
         // do nothing - it already exists
     }
     elseif(val < curr){ // left
-        if (tree.left == null){
-            // insert new node as left child
+        if (tree.left == null){ // insert new node as left child
             var new_node: Ref := new(elem, left, right)
             new_node.elem := val
             new_node.left := null
@@ -166,8 +156,7 @@ method insert_rec(tree: Ref, val: Int) returns (res: Ref)
 
             tree.left := new_node
         }
-        else {
-            // recursively insert in left subtree
+        else { // recursively insert in left subtree
             var new_left: Ref // **
             new_left := insert_rec(tree.left, val)
             tree.left := new_left
@@ -191,6 +180,8 @@ method insert_rec(tree: Ref, val: Int) returns (res: Ref)
         }
     }
     fold bst_node(tree)
+    res := tree
+
     // restore node predicate before folding the whole tree
 }
 // -----------------------------------------
@@ -199,7 +190,6 @@ method insert_rec(tree: Ref, val: Int) returns (res: Ref)
 
 // -----------------------------------------
 // Auxiliary definition of the height of a tree
-// --> 4.3
 // heap dependent function (recursive)
 function height(tree: Ref) : Int
     requires bst(tree)
@@ -207,15 +197,15 @@ function height(tree: Ref) : Int
     // TODO: define for TASK 4.3
 {
     unfolding bst(tree) in 
-    (tree.root == null ? 0 : 
-    height_node(tree.root))
-    //1 + max(height(tree.root.left), height(tree.root.left)))
+        (tree.root == null ? 0 : 
+        height_node(tree.root))
 }
 
 function height_node(node: Ref) : Int
     requires bst_node(node)
     ensures result >= 1
 {
+    //1 + max(height(node.left), height(node.left)))
     unfolding bst_node(node) in 
     (1 + max(
         (node.left == null ? 0 : height_node(node.left)), 
@@ -229,13 +219,9 @@ function height_node(node: Ref) : Int
 // to the set of values it stores.
 // heap dependent function (recursive)
 function to_set(tree: Ref): Set[Int]
-    requires bst(tree)
-    //requires acc(tree.root)
-    //requires tree.root != null ==> acc(tree.root.elem) && acc(tree.root.left) && acc(tree.root.right) && bst(tree.root)
     // TODO: define for TASK 4.4
+    requires bst(tree)
     // init_Set U {new_value}
-    //    ensures bst(tree)
-// -----------------------------------------
 {
     unfolding bst(tree) in 
         (tree.root == null ? 
@@ -245,16 +231,41 @@ function to_set(tree: Ref): Set[Int]
 function to_set_node(node: Ref): Set[Int]
     requires bst_node(node)
 {
-//  Set[Int]() : to_set_node(tree.root.left) union Set(tree.root.elem) union to_set_node(tree.root.right))
-
+    //  Set[Int]() : to_set_node(node.left) union Set(node.elem) union to_set_node(node.right))
     unfolding bst_node(node) in 
+        (
         (node.left == null ? Set[Int]() : 
-        to_set_node(node.left)        
-        //(unfolding bst_node(node.left) in to_set_node(node.left)))
-        ) 
+            to_set_node(node.left) ) 
         union Set(node.elem) 
+
         union (node.right == null ? Set[Int]() : 
-        to_set_node(node.right)
-        //(unfolding bst_node(node.right) in to_set_node(node.right)))
+            to_set_node(node.right) )
         )
+    
+}
+// -----------------------------------------
+
+method example_usage()
+    requires acc(time_credit(), 6/1)
+{
+    var tree: Ref := new(root)
+    tree.root := null
+    fold bst(tree)
+
+    bst_insert(tree, 10) // needs height 0 + 1 = 1 credit
+    assert perm(time_credit()) == 5/1 // 
+
+    assert 10 in to_set(tree)
+    assert !(5 in to_set(tree))
+
+    bst_insert(tree, 5) // needs height 1 + 1 = 2 credits
+    assert perm(time_credit()) == 3/1
+    assert 10 in to_set(tree)
+    assert 5 in to_set(tree)
+
+    bst_insert(tree, 15) // needs height 2 + 1 = 3 credits
+    assert perm(time_credit()) >= none // 0/1
+    assert 10 in to_set(tree)
+    assert 5 in to_set(tree)
+    assert 15 in to_set(tree)       
 }
