@@ -112,6 +112,12 @@ function content(base: Ref, i: Int): Seq[Int]
     )
 }
 
+function get_capacity(base: Ref): Int
+    requires acc(dyn_array(base), wildcard)
+{
+    unfolding acc(dyn_array(base)) in (base.capacity > 0 ? base.capacity : 0)
+}
+
 // -----------------------------------------
 // TASK 3.2: Implement a proven-correct method that creates a new dynamic array of length 0
 //         with the given capacity.
@@ -203,8 +209,13 @@ method append_nogrow(arr: Ref, val: Int)
 //         Hint: You may, of course, use additional time credits that have been stored
 //               in your dynamic array for later use.
 method grow(arr: Ref) returns (new_arr: Ref)
-    requires acc(time_credit(), 1/1)
+    requires dyn_array(arr)
+    requires acc(arr.capacity, wildcard)
+    requires acc(time_credit(), get_capacity(arr)/1)
+    requires unfolding dyn_array(arr) in (arr.capacity == arr.length)
+    ensures dyn_array(arr) && acc(arr.capacity, wildcard)
     ensures content(arr, 0) == old(content(arr, 0))
+    ensures unfolding dyn_array(arr) in arr.capacity >= arr.length && arr.length == old(arr.length)
 {
     consume_time_credit() // we must spend a credit for the call
 
