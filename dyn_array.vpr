@@ -104,7 +104,13 @@ function arr_length(base: Ref): Int
 
 // Feel free to also implement acessor or abstraction functions to simplify fold-unfold reasoning.
 // -----------------------------------------
-
+function content(base: Ref, i: Int): Seq[Int]
+    requires acc(dyn_array(base))
+{
+    unfolding acc(dyn_array(base)) in (
+        0 <= i && i < base.length ? Seq(lookup(base.array, i)) ++ content(base, i + 1) : Seq[Int]()
+    )
+}
 
 // -----------------------------------------
 // TASK 3.2: Implement a proven-correct method that creates a new dynamic array of length 0
@@ -171,8 +177,10 @@ method append_nogrow(arr: Ref, val: Int)
     requires acc(time_credit(), 1/1)
     requires acc(arr.array)
     requires acc(dyn_array(arr))
-    requires unfolding dyn_array(arr) in arr.capacity > arr.length
-    ensures acc(arr.array) && acc(dyn_array(arr)) && unfolding dyn_array(arr) in arr.capacity >= arr.length
+    requires unfolding dyn_array(arr) in (arr.capacity > arr.length)
+    ensures acc(arr.array) && acc(dyn_array(arr))
+    ensures content(arr, 0) == Seq(val) ++ old(content(arr, 0))
+    ensures unfolding dyn_array(arr) in arr.capacity >= arr.length && arr.length == old(arr.length) + 1
 {
     consume_time_credit() 
 
@@ -195,6 +203,8 @@ method append_nogrow(arr: Ref, val: Int)
 //         Hint: You may, of course, use additional time credits that have been stored
 //               in your dynamic array for later use.
 method grow(arr: Ref) returns (new_arr: Ref)
+    requires acc(time_credit(), 1/1)
+    ensures content(arr, 0) == old(content(arr, 0))
 {
     consume_time_credit() // we must spend a credit for the call
 
@@ -229,6 +239,7 @@ method grow(arr: Ref) returns (new_arr: Ref)
 //         Furthermore, prove memory safety, perservation of data structure invariants
 //         and that the method returns an array that correctly appends the value val. 
 method append(arr: Ref, val: Int) returns (new_arr: Ref)
+    requires acc(time_credit(), 1/1)
 {
     consume_time_credit() // we must spend a time credit for the call
 
