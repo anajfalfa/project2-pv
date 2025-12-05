@@ -83,8 +83,11 @@ predicate dyn_array(self: Ref) {
     // We keep write permission to the object's fields
     acc(self.length) && acc(self.capacity) && acc(self.array) &&
 
+    // Ghost code
+    acc(self.savings) &&
+
     // Basic representation invariants
-    0 <= self.length && self.length <= self.capacity &&
+    0 <= self.length && self.length <= self.capacity && self.savings >= 0 &&
 
     // The underlying static array's length equals the object's capacity
     len(self.array) == self.capacity &&
@@ -104,14 +107,6 @@ function arr_length(base: Ref): Int
 
 // Feel free to also implement acessor or abstraction functions to simplify fold-unfold reasoning.
 // -----------------------------------------
-function content(base: Ref, i: Int): Seq[Int]
-    requires acc(dyn_array(base))
-{
-    unfolding acc(dyn_array(base)) in (
-        0 <= i && i < base.length ? Seq(lookup(base.array, i)) ++ content(base, i + 1) : Seq[Int]()
-    )
-}
-
 function get_capacity(base: Ref): Int
     requires acc(dyn_array(base), wildcard)
 {
@@ -139,10 +134,13 @@ method cons(_capacity: Int) returns (arr: Ref)
 
     // Allocate the dynamic array object and initialise fields
     var da: Ref
-    da := new(length,capacity,array)
+    da := new(length,capacity,array, savings)
     da.length := 0
     da.capacity := _capacity
     da.array := a
+
+    // Ghost code
+    da.savings := 0
 
     fold dyn_array(da)
     arr := da
@@ -181,17 +179,19 @@ function arr_contents(base: Ref, i: Int): Seq[Int]
 //         You can add specifications and ghost code, but do not modify the production code
 method append_nogrow(arr: Ref, val: Int)
     requires acc(time_credit(), 1/1)
-    requires acc(arr.array)
     requires acc(dyn_array(arr))
-    requires unfolding dyn_array(arr) in (arr.capacity > arr.length)
-    ensures acc(arr.array) && acc(dyn_array(arr))
-    ensures content(arr, 0) == Seq(val) ++ old(content(arr, 0))
-    ensures unfolding dyn_array(arr) in arr.capacity >= arr.length && arr.length == old(arr.length) + 1
+    requires acc(arr.array)
+    requires unfolding dyn_array(arr) in get_capacity(arr) > arr_length(arr)
+    ensures acc(dyn_array(arr))
+    ensures arr_contents(arr, 0) == Seq(val) ++ old(arr_contents(arr, 0))
+    ensures unfolding dyn_array(arr) in get_capacity(arr) >= arr_length(arr) && arr_length(arr) == old(arr_length(arr)) + 1
 {
     consume_time_credit() 
 
+    unfold dyn_array(arr)
     update(arr.array, arr.length, val) // append value
     arr.length := arr.length + 1 // we appended an element
+    fold dyn_array(arr)
 }
 // -----------------------------------------
 
@@ -214,8 +214,8 @@ method grow(arr: Ref) returns (new_arr: Ref)
     requires acc(time_credit(), get_capacity(arr)/1)
     requires unfolding dyn_array(arr) in (arr.capacity == arr.length)
     ensures dyn_array(arr) && acc(arr.capacity, wildcard)
-    ensures content(arr, 0) == old(content(arr, 0))
-    ensures unfolding dyn_array(arr) in arr.capacity >= arr.length && arr.length == old(arr.length)
+    ensures arr_contents(arr, 0) == old(arr_contents(arr, 0))
+    ensures unfolding dyn_array(arr) in arr.capacity > arr.length && arr.length == old(arr.length)
 {
     consume_time_credit() // we must spend a credit for the call
 
@@ -250,10 +250,15 @@ method grow(arr: Ref) returns (new_arr: Ref)
 //         Furthermore, prove memory safety, perservation of data structure invariants
 //         and that the method returns an array that correctly appends the value val. 
 method append(arr: Ref, val: Int) returns (new_arr: Ref)
+    requires dyn_array(arr)
     requires acc(time_credit(), 1/1)
+    ensures dyn_array(arr)
+    ensures arr_contents(arr, 0) == old(arr_contents(arr, 0))
+    ensures unfolding dyn_array(arr) in arr.capacity >= arr.length && arr.length == old(arr.length) + 1
 {
     consume_time_credit() // we must spend a time credit for the call
 
+    unfold dyn_array(arr)
     // do we have space left?
     if (arr.length + 1 == arr.capacity) {
         // no, we need to grow the array first
@@ -264,7 +269,9 @@ method append(arr: Ref, val: Int) returns (new_arr: Ref)
     } else {
         // yes, we can append without growing the array first
         new_arr := arr
+
         append_nogrow(new_arr, val)
     }
+    fold dyn_array(arr)
 }
 // -----------------------------------------
