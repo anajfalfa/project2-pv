@@ -121,22 +121,21 @@ method bst_insert(tree: Ref, val: Int)
         fold bst_node(new_node)   
     }
     else{   // non-empty tree
-        var new_root: Ref
-        new_root := insert_rec(tree.root, val)
-        tree.root := new_root
+        insert_rec(tree.root, val)
+        // tree.root := new_root
     }
     fold bst(tree) // folding back the bst predicate
     exhale perm(time_credit()) == 0/1 // none // 1/1 // give back unused time credit
 }
 
-method insert_rec(tree: Ref, val: Int) returns (res: Ref)
+method insert_rec(tree: Ref, val: Int) 
     requires bst_node(tree)
     requires acc(time_credit(), (height_node(tree))/1) //++
     
     ensures bst_node(tree)
-    ensures res == tree
-    ensures to_set_node(res) == old(to_set_node(tree)) union (Set(val))
-    ensures height_node(res) <= old(height_node(tree)) + 1
+    ensures to_set_node(tree) == old(to_set_node(tree)) union (Set(val))
+    ensures height_node(tree) <= old(height_node(tree)) + 1
+
 {
     consume_time_credit() // spend one time credit for the current call 4.3
     unfold bst_node(tree)
@@ -157,9 +156,8 @@ method insert_rec(tree: Ref, val: Int) returns (res: Ref)
             tree.left := new_node
         }
         else { // recursively insert in left subtree
-            var new_left: Ref // **
-            new_left := insert_rec(tree.left, val)
-            tree.left := new_left
+            insert_rec(tree.left, val)
+            //tree.left := new_left
         }
     } else {
         // (val > curr) // right
@@ -174,15 +172,12 @@ method insert_rec(tree: Ref, val: Int) returns (res: Ref)
             tree.right := new_node
         } else {
             // recursively insert in right subtree
-            var new_right: Ref
-            new_right := insert_rec(tree.right, val)
-            tree.right := new_right
+            insert_rec(tree.right, val)
         }
     }
-    fold bst_node(tree)
-    res := tree
-
     // restore node predicate before folding the whole tree
+    fold bst_node(tree)
+    //res := tree
 }
 // -----------------------------------------
 
